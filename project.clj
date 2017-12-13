@@ -8,4 +8,5 @@
                  [seesaw "1.4.5"]]
   :main ^:skip-aot trajectory.core
   :target-path "target/%s"
-  :profiles {:uberjar {:aot :all}})
+  :profiles {:dev {:plugins [[com.jakemccrary/lein-test-refresh "0.21.1"]]}
+             :uberjar {:aot :all}})
