@@ -42,9 +42,10 @@
     (is
      (=
       (all-trajectories test-data)
-      (list {:object "B", 1 "Line 1", 2 "Line 3", 3 "Line 1", 4 "Line 3", 5 "Line 1", :trajectory-string "Line 1Line 3Line 1Line 3Line 1"}
-            {:object "A", 1 "Line 0", 2 "Line 2", 3 "Line 1", :trajectory-string "Line 0Line 2Line 1"}
-            {:object "C", 1 "Line 2", 2 "Line 2", 3 "Line 1", 4 "Line 2", :trajectory-string "Line 2Line 2Line 1Line 2"}))))
+      (list
+       {:object "B", :trajectory ["Line 1" "Line 3" "Line 1" "Line 3" "Line 1"]}
+       {:object "A", :trajectory ["Line 0" "Line 2" "Line 1"]}
+       {:object "C", :trajectory ["Line 2" "Line 2" "Line 1" "Line 2"]}))))
 
   (testing "mean-position-in-sequence returns expected means of test-data for Line 2"
     (is

@@ -11,9 +11,9 @@
 (def input-file "resources/input.csv") ;; input file 
 
 (def locations {"Line 0" {:x 100 :y 400}
-                "Line 1" {:x 150 :y 500}
-                "Line 2" {:x 300 :y 700}
-                "Line 3" {:x 700 :y 100}}) ;; this is the locations of the nodes
+                "Line 1" {:x 300 :y 600}
+                "Line 2" {:x 400 :y 200}
+                "Line 3" {:x 700 :y 200}}) ;; this is the locations of the nodes
 
 (def data-to-plot (atom {:vertices {} :edges {}}))
 
@@ -104,6 +104,7 @@
     #(:step %1)
     (filter #(= (:vertex %1) state) data))))
 
+;; we can compute the vertex state far more easilt using frequencies - implement this
 (defn compute-vertex-state
   "computer vertex state. State of vertex is the number of occurences of the vertex"
   [vertex-name data]
@@ -116,7 +117,7 @@
          (map #(hash-map %1 (hash-map :state (compute-vertex-state %1 data))) (distinct-vertices data))))
 
 (defn edges-of-trajectory
- "produce a list of all the edges from a trajectory"
+ "Leave as is as the moment but change to a matrix. produce a matrix of two vectors. First vector is the start and sseond the end"
   [trajectory]
   (let
       [start-vertices (take (- (count trajectory) 1) trajectory)
@@ -125,18 +126,33 @@
 
 (defn all-edges
   "Get all the edges from the data"
-  [data]
-  (mapcat #(edges-of-trajectory (% :trajectory)) (all-trajectories data)))
+  [gross-filter data]
+  (let
+      [filtered-trajectories
+       (if (not (= gross-filter "-1"))
+         (filter #(some (fn [a] (= gross-filter a)) (% :trajectory)) (all-trajectories data))
+         (all-trajectories data))]
+    (mapcat #(edges-of-trajectory (% :trajectory)) filtered-trajectories)))
 
 (defn system-edges-weights
   "compute the weight of all the edges by doing a distinct-count of all the edges"
-
-
+  [edges]
+  (let [edge-state (frequencies edges)]
+    (map (fn [[[a b] c]]
+           (hash-map
+            :start (first (filter #(= (first %) a) locations))
+            :end (first (filter #(= (first %) b) locations))
+            :width c))
+         edge-state)))
+    
   ;; then we need to get the x and y location of the start and the ends for the purpose of plotting and we are good to go
   
 ;; calculate the overall system to plot 
 (defn system-to-plot
   "contains the data structure to plot, data is the output of the file read. Need to redefine this parameter"
-  [data data-model-atom]
+  [data data-model-atom gross-filter]
   (reset! data-model-atom
-          (conj {} {:vertices (merge-with merge locations (system-vertices-state data))})))
+          (conj
+           {}
+           {:vertices (merge-with merge locations (system-vertices-state data))}
+           {:edges (system-edges-weights (all-edges gross-filter data))})))
