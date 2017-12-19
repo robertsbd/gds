@@ -10,12 +10,14 @@
 
 (def input-file "resources/input.csv") ;; input file 
 
-(def locations {"Line 0" {:x 100 :y 400}
-                "Line 1" {:x 300 :y 600}
-                "Line 2" {:x 400 :y 200}
-                "Line 3" {:x 700 :y 200}}) ;; this is the locations of the nodes
+(def locations {"UG" {:x 100 :y 350}
+                "PGT" {:x 300 :y 600}
+                "PGR" {:x 400 :y 100}
+                "PhD" {:x 700 :y 350}}) ;; locations of the nodes
 
+;;base data to plot and the overlay data to plot
 (def data-to-plot (atom {:vertices {} :edges {}}))
+(def overlay (atom {:vertices {} :edges {}}))
 
 ;; file reading functions
 
@@ -63,25 +65,15 @@
   [data]
   (distinct (map #(:object %1) data)))
 
-(defn distinct-vertices
-  "Returns a map of all distinct objects"
-  [data]
-  (distinct (map #(:vertex %1) data)))
-
 (defn filter-object
   "Returns all rows of an object"
   [object data]
   (filter #(= object (:object %)) data))
 
-(defn sort-by-step
-  "sort all rows by step"
-  [data]
-  (sort-by :step data))
-
 (defn object-trajectory
   "compute trajectory of a given object"
   [object data]
-  (let [obj (sort-by-step (filter-object object data))
+  (let [obj (sort-by :step (filter-object object data))
         all-states (map #(%1 :vertex) obj)
         all-steps (map #(%1 :step) obj)
         trajectory (reduce (fn [a b] (conj a (second b)))
@@ -96,25 +88,16 @@
   [data]
   (map #(object-trajectory %1 data) (distinct-objects data)))
 
-(defn mean-position-in-sequence
-  "Where is the average position of a state amongst all the sequence"
-  [state data]
-  (mean
-   (map
-    #(:step %1)
-    (filter #(= (:vertex %1) state) data))))
-
-;; we can compute the vertex state far more easilt using frequencies - implement this
-(defn compute-vertex-state
-  "computer vertex state. State of vertex is the number of occurences of the vertex"
-  [vertex-name data]
-  (count (filter #(= (:vertex %1) vertex-name) data)))
-
 (defn system-vertices-state
   "compute the state of all vertices"
-  [data]
-  (apply merge
-         (map #(hash-map %1 (hash-map :state (compute-vertex-state %1 data))) (distinct-vertices data))))
+  [gross-filter data]
+  (let
+      [filtered-trajectories
+       (if (not (= gross-filter "-1"))
+         (filter #(some (fn [a] (= gross-filter a)) (% :trajectory)) (all-trajectories data))
+         (all-trajectories data))
+       freq-states (frequencies (apply concat (map #(%1 :trajectory) filtered-trajectories)))]
+    (apply merge (map #(hash-map (first %) (hash-map :state (second %))) freq-states))))
 
 (defn edges-of-trajectory
  "Leave as is as the moment but change to a matrix. produce a matrix of two vectors. First vector is the start and sseond the end"
@@ -145,14 +128,22 @@
             :width c))
          edge-state)))
     
-  ;; then we need to get the x and y location of the start and the ends for the purpose of plotting and we are good to go
-  
-;; calculate the overall system to plot 
 (defn system-to-plot
-  "contains the data structure to plot, data is the output of the file read. Need to redefine this parameter"
+  "Data structure to plot"
   [data data-model-atom gross-filter]
-  (reset! data-model-atom
+  (let
+      [vertices
+       (->> data
+           (system-vertices-state gross-filter)
+           (merge-with merge locations)
+           (filter #(not (= nil ((second %) :state))))
+           (conj {}))
+       edges
+       (->> data
+           (all-edges gross-filter)
+           (system-edges-weights))]
+    (reset! data-model-atom
           (conj
            {}
-           {:vertices (merge-with merge locations (system-vertices-state data))}
-           {:edges (system-edges-weights (all-edges gross-filter data))})))
+           {:vertices vertices}
+           {:edges edges}))))

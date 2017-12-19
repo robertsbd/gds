@@ -7,20 +7,24 @@
              [seesaw.color :as scol]
              ))
 
-(def circle-style
-  (sg/style :foreground (scol/color :black) :background (scol/color :lightblue)))
+(def circle-style-base
+  (sg/style :foreground (scol/color :lightblue) :background (scol/color :lightblue)))
+
+(def circle-style-foreground
+  (sg/style :foreground (scol/color :darkblue) :background (scol/color :darkblue)))
+
 
 (defn centred-circle-with-label
   "a circle centred on the coordinates given with an optional label"
-  [g x y radius label]
+  [g x y radius circ-style & {:keys [label] :or {label ""}}]
   (let [width (* 2 radius)]
     (sg/draw g
-             (sg/ellipse (- x radius) (- y radius) width width) circle-style
+             (sg/ellipse (- x radius) (- y radius) width width) circ-style
              (sg/string-shape x (+ y radius 15) label))))
 
 (defn arrow
   "an arrow"
-  [g x1 y1 x2 y2 edge-width arrow-width vertex-radius]
+  [g x1 y1 x2 y2 edge-width arrow-width vertex-radius col]
   (let ;; bunch of trig to make the line intersect with the vertex circle
       [angle-a (Math/atan2 (- y2 y1) (- x2 x1))
        angle-b (- (/ Math/PI 2) angle-a)
@@ -30,38 +34,52 @@
        y-edge-of-vertex (- y2 y-adjustment)]
     ;; Draw the arrow head
     (sg/push g
-             (sg/translate g
-                           x-edge-of-vertex
-                           y-edge-of-vertex)
+             (sg/translate g x-edge-of-vertex y-edge-of-vertex)
              (sg/rotate g (Math/toDegrees (- angle-a (/ Math/PI 2))))
              (sg/draw g
-                      (sg/polygon [0 arrow-width] [(- arrow-width) (- arrow-width)] [arrow-width (- arrow-width)])
-                      (sg/style :foreground (scol/color :black) :background (scol/color :black))))
+                      (sg/polygon [0 0] [(- arrow-width) (- (* 2 arrow-width))] [arrow-width (- (* 2 arrow-width))])                      
+;;                      (sg/polygon [0 arrow-width] [(- arrow-width) (- arrow-width)] [arrow-width (- arrow-width)])
+                      (sg/style :foreground (scol/color col) :background (scol/color col))))
     ;; Draw the arrows line
     (sg/draw g
-             (sg/line x1 y1 x-edge-of-vertex y-edge-of-vertex) (sg/style :foreground (scol/color :black) :stroke edge-width))))
+             (sg/line x1 y1 x-edge-of-vertex y-edge-of-vertex) (sg/style :foreground (scol/color col) :stroke edge-width))))
 
-(defn paint
-  "Our paint function"
-  [c g]
-
-  ;; paint the edges
-  (doseq [e (@dm/data-to-plot :edges)] ;; second draw all the edges
+(defn draw-all-edges
+  "draw all the edges of a data model"
+  [g data-model arrow-colour]
+  (doseq [e (@data-model :edges)] ;; second draw all the edges
     (let [edge-width (e :width)
           x1 ((second (e :start)) :x)
           y1 ((second (e :start)) :y)
           x2 ((second (e :end)) :x)
           y2 ((second (e :end)) :y)
-          size-of-end-vertex (* 10 (((@dm/data-to-plot :vertices) (first (e :end))) :state))]
-      (arrow g x1 y1 x2 y2 edge-width 7 size-of-end-vertex)))
+          size-of-end-vertex (* 10 (((@data-model :vertices) (first (e :end))) :state))]
+      (arrow g x1 y1 x2 y2 edge-width 7 size-of-end-vertex arrow-colour))))
 
-  (doseq [d (@dm/data-to-plot :vertices)] ;; first draw all the vertices
-    (let [circle-radius ((second d) :state)
-          x ((second d) :x)            ;; x and y define the centre of the circle
-          y ((second d) :y)
-          label (first d)]
-      (centred-circle-with-label g x y (* 10 circle-radius) label))))
+(defn draw-all-vertices
+  "draw all the vertices of a data model"
+  [g data-model circle-style show-label]
+  (do
+    (doseq [d (@data-model :vertices)] ;; first draw all the vertices
+      (let [circle-radius ((second d) :state)
+            x ((second d) :x)            ;; x and y define the centre of the circle
+            y ((second d) :y)
+            label (first d)]
+        (if show-label 
+          (centred-circle-with-label g x y (* 10 circle-radius) circle-style :label label)
+          (centred-circle-with-label g x y (* 10 circle-radius) circle-style))))))
 
+(defn paint
+  "Our paint function"
+  [c g]
+  
+  ;; paint the basemodel
+  (draw-all-edges g dm/data-to-plot :lightgrey)
+  (draw-all-vertices g dm/data-to-plot circle-style-base true)
+
+  ;; paint the overlay  
+  (draw-all-edges g dm/overlay :black)
+  (draw-all-vertices g dm/overlay circle-style-foreground false))
 
 (def main-canvas
   "The canvas"
@@ -83,40 +101,40 @@
 
 (defn plot-data-model
   []
-  (let [data (dm/read-input-file-return-data)
-        trajectories (dm/all-trajectories data)]
+  (let [data (dm/read-input-file-return-data)]
     (do
       (dm/system-to-plot data dm/data-to-plot "-1")
+      (dm/system-to-plot data dm/overlay "-1")
       (create-window!))))
 
-(defn plot-data-model-line0
+(defn plot-data-model-linePhD
   []
-  (let [data (dm/read-input-file-return-data)
-        trajectories (dm/all-trajectories data)]
+  (let [data (dm/read-input-file-return-data)]
     (do
-      (dm/system-to-plot data dm/data-to-plot "Line 0")
+      (dm/system-to-plot data dm/data-to-plot "-1")
+      (dm/system-to-plot data dm/overlay "PhD")
       (sc/repaint! (sc/select main-window [:#maincanvas])))))
 
-(defn plot-data-model-line1
+(defn plot-data-model-lineUG
   []
-  (let [data (dm/read-input-file-return-data)
-        trajectories (dm/all-trajectories data)]
+  (let [data (dm/read-input-file-return-data)]
     (do
-      (dm/system-to-plot data dm/data-to-plot "Line 1")
+      (dm/system-to-plot data dm/data-to-plot "-1")      
+      (dm/system-to-plot data dm/overlay "UG")
       (sc/repaint! (sc/select main-window [:#maincanvas])))))
 
-(defn plot-data-model-line2
+(defn plot-data-model-linePGR
   []
-  (let [data (dm/read-input-file-return-data)
-        trajectories (dm/all-trajectories data)]
+  (let [data (dm/read-input-file-return-data)]
     (do
-      (dm/system-to-plot data dm/data-to-plot "Line 2")
+      (dm/system-to-plot data dm/data-to-plot "-1")      
+      (dm/system-to-plot data dm/overlay "PGR")
       (sc/repaint! (sc/select main-window [:#maincanvas])))))
 
-(defn plot-data-model-line3
+(defn plot-data-model-linePGT
   []
-  (let [data (dm/read-input-file-return-data)
-        trajectories (dm/all-trajectories data)]
+  (let [data (dm/read-input-file-return-data)]
     (do
-      (dm/system-to-plot data dm/data-to-plot "Line 3")
+      (dm/system-to-plot data dm/data-to-plot "-1")      
+      (dm/system-to-plot data dm/overlay "PGT")
       (sc/repaint! (sc/select main-window [:#maincanvas])))))
