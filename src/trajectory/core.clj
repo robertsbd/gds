@@ -99,7 +99,7 @@
       (sc/show!)
       (sc/config! :size [800 :by 800])))
 
-(defn plot-data-model
+(defn plot-model
   []
   (let [data (dm/read-input-file-return-data)]
     (do
@@ -107,34 +107,19 @@
       (dm/system-to-plot data dm/overlay "-1")
       (create-window!))))
 
-(defn plot-data-model-linePhD
+(defn plot-model-PhD
   []
   (let [data (dm/read-input-file-return-data)]
     (do
       (dm/system-to-plot data dm/data-to-plot "-1")
-      (dm/system-to-plot data dm/overlay "PhD")
+      (dm/system-to-plot data dm/overlay #(some (fn [a] (= a "PhD")) (% :trajectory)))
       (sc/repaint! (sc/select main-window [:#maincanvas])))))
 
-(defn plot-data-model-lineUG
-  []
+(defn plot-model-filtered
+  [filter-list]
   (let [data (dm/read-input-file-return-data)]
     (do
       (dm/system-to-plot data dm/data-to-plot "-1")      
-      (dm/system-to-plot data dm/overlay "UG")
+      (dm/system-to-plot data dm/overlay #(clojure.set/subset? (set filter-list) (set (% :trajectory))))
       (sc/repaint! (sc/select main-window [:#maincanvas])))))
 
-(defn plot-data-model-linePGR
-  []
-  (let [data (dm/read-input-file-return-data)]
-    (do
-      (dm/system-to-plot data dm/data-to-plot "-1")      
-      (dm/system-to-plot data dm/overlay "PGR")
-      (sc/repaint! (sc/select main-window [:#maincanvas])))))
-
-(defn plot-data-model-linePGT
-  []
-  (let [data (dm/read-input-file-return-data)]
-    (do
-      (dm/system-to-plot data dm/data-to-plot "-1")      
-      (dm/system-to-plot data dm/overlay "PGT")
-      (sc/repaint! (sc/select main-window [:#maincanvas])))))

@@ -10,7 +10,8 @@
 
 (def input-file "resources/input.csv") ;; input file 
 
-(def locations {"UG" {:x 100 :y 350}
+(def locations {"EXTERNAL" {:x 100 :y 200}
+                "UG" {:x 100 :y 500}
                 "PGT" {:x 300 :y 600}
                 "PGR" {:x 400 :y 100}
                 "PhD" {:x 700 :y 350}}) ;; locations of the nodes
@@ -90,11 +91,11 @@
 
 (defn system-vertices-state
   "compute the state of all vertices"
-  [gross-filter data]
+  [flt data]
   (let
       [filtered-trajectories
-       (if (not (= gross-filter "-1"))
-         (filter #(some (fn [a] (= gross-filter a)) (% :trajectory)) (all-trajectories data))
+       (if (not (= flt "-1"))
+         (filter flt (all-trajectories data))
          (all-trajectories data))
        freq-states (frequencies (apply concat (map #(%1 :trajectory) filtered-trajectories)))]
     (apply merge (map #(hash-map (first %) (hash-map :state (second %))) freq-states))))
@@ -109,11 +110,11 @@
 
 (defn all-edges
   "Get all the edges from the data"
-  [gross-filter data]
+  [flt data]
   (let
       [filtered-trajectories
-       (if (not (= gross-filter "-1"))
-         (filter #(some (fn [a] (= gross-filter a)) (% :trajectory)) (all-trajectories data))
+       (if (not (= flt "-1"))
+         (filter flt (all-trajectories data))
          (all-trajectories data))]
     (mapcat #(edges-of-trajectory (% :trajectory)) filtered-trajectories)))
 
@@ -130,17 +131,17 @@
     
 (defn system-to-plot
   "Data structure to plot"
-  [data data-model-atom gross-filter]
+  [data data-model-atom flt]
   (let
       [vertices
        (->> data
-           (system-vertices-state gross-filter)
+           (system-vertices-state flt)
            (merge-with merge locations)
            (filter #(not (= nil ((second %) :state))))
            (conj {}))
        edges
        (->> data
-           (all-edges gross-filter)
+           (all-edges flt)
            (system-edges-weights))]
     (reset! data-model-atom
           (conj
