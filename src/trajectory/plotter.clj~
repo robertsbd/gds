@@ -1,9 +1,0 @@
-(ns trajectory.core
-  (:gen-class)
-  (:require [clojure.math.numeric-tower :as math])
-
-(defn calc-to-edge-of-circle
-  "modify the length of a line and provide new x y coords to avoid overlapping the circle around a point to which we are plotting"
-  [size-of-circle x1 y1 x2 y2]
-  (let
-      [length (
