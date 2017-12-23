@@ -1,11 +1,23 @@
 (ns trajectory.core
   (:gen-class)
   (:require  [trajectory.data-model :as dm]
-;;             [trajectory.plotter :as pl]
              [seesaw.core :as sc]
              [seesaw.graphics :as sg]
              [seesaw.color :as scol]
              ))
+
+;; get input datat from external files
+(def data (dm/read-file dm/process-line-data "resources/input.csv"))
+
+(def vertices-locations (dm/read-file dm/process-line-vertices "resources/vertices_locations.csv"))
+
+;;base data to plot and the overlay data to plot
+(def base-data-model (atom {:vertices {} :edges {}}))
+
+(def overlay-data-model (atom {:vertices {} :edges {}}))
+
+;; styles
+(def window-size {:w 800 :h 800})
 
 (def circle-style-base
   (sg/style :foreground (scol/color :lightblue) :background (scol/color :lightblue)))
@@ -13,7 +25,7 @@
 (def circle-style-foreground
   (sg/style :foreground (scol/color :darkblue) :background (scol/color :darkblue)))
 
-
+;; Graphics functions
 (defn centred-circle-with-label
   "a circle centred on the coordinates given with an optional label"
   [g x y radius circ-style & {:keys [label] :or {label ""}}]
@@ -38,7 +50,6 @@
              (sg/rotate g (Math/toDegrees (- angle-a (/ Math/PI 2))))
              (sg/draw g
                       (sg/polygon [0 0] [(- arrow-width) (- (* 2 arrow-width))] [arrow-width (- (* 2 arrow-width))])                      
-;;                      (sg/polygon [0 arrow-width] [(- arrow-width) (- arrow-width)] [arrow-width (- arrow-width)])
                       (sg/style :foreground (scol/color col) :background (scol/color col))))
     ;; Draw the arrows line
     (sg/draw g
@@ -72,14 +83,13 @@
 (defn paint
   "Our paint function"
   [c g]
-  
   ;; paint the basemodel
-  (draw-all-edges g dm/data-to-plot :lightgrey)
-  (draw-all-vertices g dm/data-to-plot circle-style-base true)
-
+  (draw-all-edges g base-data-model :lightgrey)
+  (draw-all-vertices g base-data-model circle-style-base true)
+  
   ;; paint the overlay  
-  (draw-all-edges g dm/overlay :black)
-  (draw-all-vertices g dm/overlay circle-style-foreground false))
+  (draw-all-edges g overlay-data-model :black)
+  (draw-all-vertices g overlay-data-model circle-style-foreground false))
 
 (def main-canvas
   "The canvas"
@@ -97,29 +107,20 @@
   []
   (-> main-window
       (sc/show!)
-      (sc/config! :size [800 :by 800])))
+      (sc/config! :size [(window-size :w) :by
+                         (window-size :h)])))
+
+;; plot the models
 
 (defn plot-model
-  []
-  (let [data (dm/read-input-file-return-data)]
-    (do
-      (dm/system-to-plot data dm/data-to-plot "-1")
-      (dm/system-to-plot data dm/overlay "-1")
-      (create-window!))))
+  ([]
+     (do
+       (dm/system-to-plot data vertices-locations base-data-model identity)
+       (dm/system-to-plot data vertices-locations overlay-data-model identity)
+       (create-window!)))
 
-(defn plot-model-PhD
-  []
-  (let [data (dm/read-input-file-return-data)]
-    (do
-      (dm/system-to-plot data dm/data-to-plot "-1")
-      (dm/system-to-plot data dm/overlay #(some (fn [a] (= a "PhD")) (% :trajectory)))
-      (sc/repaint! (sc/select main-window [:#maincanvas])))))
-
-(defn plot-model-filtered
-  [filter-list]
-  (let [data (dm/read-input-file-return-data)]
-    (do
-      (dm/system-to-plot data dm/data-to-plot "-1")      
-      (dm/system-to-plot data dm/overlay #(clojure.set/subset? (set filter-list) (set (% :trajectory))))
-      (sc/repaint! (sc/select main-window [:#maincanvas])))))
-
+  ([filter-list]
+     (do
+       (dm/system-to-plot data vertices-locations base-data-model identity)      
+       (dm/system-to-plot data vertices-locations overlay-data-model #(clojure.set/subset? (set filter-list) (set (% :trajectory))))
+       (sc/repaint! (sc/select main-window [:#maincanvas])))))
